@@ -340,6 +340,7 @@ riscv64*) ARCH=riscv64 ;;
 riscv32*) ARCH=riscv32 ;;
 sh[1-9bel-]*|sh|superh*) ARCH=sh ;;
 s390x*) ARCH=s390x ;;
+xtensa*) ARCH=xtensa ;;
 unknown) fail "$0: unable to detect target arch; try $0 --target=..." ;;
 *) fail "$0: unknown or unsupported target \"$target\"" ;;
 esac
@@ -754,6 +755,13 @@ fi
 if trycppif __SH_FDPIC__ "$t" ; then
 SUBARCH=${SUBARCH}-fdpic
 fi
+fi
+
+if test "$ARCH" = "xtensa" ; then
+if trycppif __XTENSA_WINDOWED_ABI__ "$t" ; then
+fail "$0: error: compiler uses unsupported ABI by default"
+fi
+trycppif __FDPIC__ "$t" && SUBARCH=${SUBARCH}-fdpic
 fi
 
 test "$SUBARCH" \
