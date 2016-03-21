@@ -22,6 +22,7 @@ void _dlstart_c(size_t *sp, size_t *dynv)
 {
 	size_t i, aux[AUX_CNT], dyn[DYN_CNT];
 	size_t *rel, rel_size, base;
+	unsigned long addr = 1;
 
 	int argc = *sp;
 	char **argv = (void *)(sp+1);
@@ -138,7 +139,17 @@ void _dlstart_c(size_t *sp, size_t *dynv)
 	for (; rel_size; rel+=3, rel_size-=3*sizeof(size_t)) {
 		if (!IS_RELATIVE(rel[1], 0)) continue;
 		size_t *rel_addr = (void *)(base + rel[0]);
-		*rel_addr = base + rel[2];
+		if (((unsigned long)rel_addr & -4096) != addr) {
+			addr = (unsigned long)rel_addr & -4096;
+			__asm__ __volatile__ ("movi a2, 82\n\t"
+					      "mov a6, %0\n\t"
+					      "mov a3, %1\n\t"
+					      "mov a4, %2\n\t"
+					      "syscall"
+					      :: "a"(addr), "a"(4096), "a"(7)
+					      : "a2", "a3", "a4", "a6", "memory");
+		}
+		*rel_addr += base + rel[2];
 	}
 #endif
 
