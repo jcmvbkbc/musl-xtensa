@@ -314,6 +314,7 @@ static void do_relocs(struct dso *dso, size_t *rel, size_t rel_size, size_t stri
 	size_t tls_val;
 	size_t addend;
 	int skip_relative = 0, reuse_addends = 0, save_slot = 0;
+	unsigned long addr = 1;
 
 	if (dso == &ldso) {
 		/* Only ldso's REL table needs addend saving/reuse. */
@@ -328,6 +329,10 @@ static void do_relocs(struct dso *dso, size_t *rel, size_t rel_size, size_t stri
 		if (type == REL_NONE) continue;
 		sym_index = R_SYM(rel[1]);
 		reloc_addr = laddr(dso, rel[0]);
+		if (((unsigned long)reloc_addr & -4096) != addr) {
+			addr = (unsigned long)reloc_addr & -4096;
+			mprotect((void *)addr, 4096, 7);
+		}
 		if (sym_index) {
 			sym = syms + sym_index;
 			name = strings + sym->st_name;
@@ -377,7 +382,7 @@ static void do_relocs(struct dso *dso, size_t *rel, size_t rel_size, size_t stri
 			*reloc_addr = sym_val + addend;
 			break;
 		case REL_RELATIVE:
-			*reloc_addr = (size_t)base + addend;
+			*reloc_addr += (size_t)base + addend;
 			break;
 		case REL_SYM_OR_REL:
 			if (sym) *reloc_addr = sym_val + addend;
@@ -440,6 +445,40 @@ static void do_relocs(struct dso *dso, size_t *rel, size_t rel_size, size_t stri
 					+ TPOFF_K + addend;
 #else
 				reloc_addr[1] = tls_val - def.dso->tls.offset
+					+ addend;
+#endif
+			}
+			break;
+		case R_XTENSA_RTLD:
+			break;
+		case R_XTENSA_TLSDESC_FN:
+			if (runtime && def.dso->tls_id >= static_tls_cnt) {
+				reloc_addr[0] = (size_t)__tlsdesc_dynamic;
+			} else {
+				reloc_addr[0] = (size_t)__tlsdesc_static;
+			}
+			break;
+		case R_XTENSA_TLSDESC_ARG:
+			if (stride<3) addend = reloc_addr[1];
+			if (runtime && def.dso->tls_id >= static_tls_cnt) {
+				struct td_index *new = malloc(sizeof *new);
+				if (!new) {
+					error(
+					"Error relocating %s: cannot allocate TLSDESC for %s",
+					dso->name, sym ? name : "(local)" );
+					longjmp(*rtld_fail, 1);
+				}
+				new->next = dso->td_index;
+				dso->td_index = new;
+				new->args[0] = def.dso->tls_id;
+				new->args[1] = tls_val + addend;
+				reloc_addr[0] = (size_t)new;
+			} else {
+#ifdef TLS_ABOVE_TP
+				reloc_addr[0] = tls_val + def.dso->tls.offset
+					+ TPOFF_K + addend;
+#else
+				reloc_addr[0] = tls_val - def.dso->tls.offset
 					+ addend;
 #endif
 			}
