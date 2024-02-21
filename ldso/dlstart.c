@@ -96,6 +96,9 @@ hidden void _dlstart_c(size_t *sp, size_t *dynv)
 			*rel_addr = rel[2] + segs[j].addr - segs[j].p_vaddr + val;
 		}
 	}
+#ifdef __xtensa__
+	((unsigned long *)dyn[DT_PLTGOT])[3] = segs[0].addr - segs[0].p_vaddr;
+#endif
 #else
 	/* If the dynamic linker is invoked as a command, its load
 	 * address is not available in the aux vector. Instead, compute

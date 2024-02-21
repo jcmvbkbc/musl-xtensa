@@ -402,7 +402,11 @@ static void do_relocs(struct dso *dso, size_t *rel, size_t rel_size, size_t stri
 			reuse_addends = 1;
 		skip_relative = 1;
 	}
-
+#ifdef __xtensa__
+	else {
+		dso->got[3] = dso->loadmap->segs[0].addr - dso->loadmap->segs[0].p_vaddr;
+	}
+#endif
 	for (; rel_size; rel+=stride, rel_size-=stride*sizeof(size_t)) {
 		if (skip_relative && IS_RELATIVE(rel[1], dso->syms)) continue;
 		type = R_TYPE(rel[1]);
@@ -1422,6 +1426,7 @@ static void reloc_all(struct dso *p)
 		if (!DL_FDPIC)
 			do_relr_relocs(p, laddr(p, dyn[DT_RELR]), dyn[DT_RELRSZ]);
 
+#if 0
 		if (head != &ldso && p->relro_start != p->relro_end) {
 			long ret = __syscall(SYS_mprotect, laddr(p, p->relro_start),
 				p->relro_end-p->relro_start, PROT_READ);
@@ -1431,6 +1436,7 @@ static void reloc_all(struct dso *p)
 				if (runtime) longjmp(*rtld_fail, 1);
 			}
 		}
+#endif
 
 		p->relocated = 1;
 	}
