@@ -1420,6 +1420,7 @@ static void reloc_all(struct dso *p)
 		if (!DL_FDPIC)
 			do_relr_relocs(p, laddr(p, dyn[DT_RELR]), dyn[DT_RELRSZ]);
 
+#if 0
 		if (head != &ldso && p->relro_start != p->relro_end) {
 			long ret = __syscall(SYS_mprotect, laddr(p, p->relro_start),
 				p->relro_end-p->relro_start, PROT_READ);
@@ -1429,6 +1430,7 @@ static void reloc_all(struct dso *p)
 				if (runtime) longjmp(*rtld_fail, 1);
 			}
 		}
+#endif
 
 		p->relocated = 1;
 	}
@@ -1485,7 +1487,7 @@ void __libc_exit_fini()
 		if (dyn[0] & (1<<DT_FINI_ARRAY)) {
 			size_t n = dyn[DT_FINI_ARRAYSZ]/sizeof(size_t);
 			size_t *fn = (size_t *)laddr(p, dyn[DT_FINI_ARRAY])+n;
-			while (n--) ((void (*)(void))*--fn)();
+			while (n--) fpaddr(p, *--fn)();
 		}
 #ifndef NO_LEGACY_INITFINI
 		if ((dyn[0] & (1<<DT_FINI)) && dyn[DT_FINI])
@@ -1603,7 +1605,7 @@ static void do_init_fini(struct dso **queue)
 		if (dyn[0] & (1<<DT_INIT_ARRAY)) {
 			size_t n = dyn[DT_INIT_ARRAYSZ]/sizeof(size_t);
 			size_t *fn = laddr(p, dyn[DT_INIT_ARRAY]);
-			while (n--) ((void (*)(void))*fn++)();
+			while (n--) fpaddr(p, *fn++)();
 		}
 
 		pthread_mutex_lock(&init_fini_lock);

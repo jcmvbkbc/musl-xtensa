@@ -90,12 +90,19 @@ hidden void _dlstart_c(size_t *sp, size_t *dynv)
 				- segs[rel_addr[1]].p_vaddr
 				+ syms[R_SYM(rel[1])].st_value;
 			rel_addr[1] = dyn[DT_PLTGOT];
+		} else if (R_TYPE(rel[1]) == REL_RELATIVE) {
+			size_t val = *rel_addr;
+			for (j=0; val-segs[j].p_vaddr >= segs[j].p_memsz; j++);
+			*rel_addr += segs[j].addr - segs[j].p_vaddr;
 		} else {
 			size_t val = syms[R_SYM(rel[1])].st_value;
 			for (j=0; val-segs[j].p_vaddr >= segs[j].p_memsz; j++);
 			*rel_addr = rel[2] + segs[j].addr - segs[j].p_vaddr + val;
 		}
 	}
+#ifdef __xtensa__
+	((unsigned long *)dyn[DT_PLTGOT])[3] = segs[0].addr - segs[0].p_vaddr;
+#endif
 #else
 	/* If the dynamic linker is invoked as a command, its load
 	 * address is not available in the aux vector. Instead, compute
