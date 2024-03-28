@@ -480,7 +480,7 @@ static void do_relocs(struct dso *dso, size_t *rel, size_t rel_size, size_t stri
 			memcpy(reloc_addr, &(size_t){sym_val + addend}, sizeof(size_t));
 			break;
 		case REL_RELATIVE:
-			*reloc_addr = (size_t)base + addend;
+			*reloc_addr = (size_t)laddr(dso, addend);
 			break;
 		case REL_SYM_OR_REL:
 			if (sym) *reloc_addr = sym_val + addend;
